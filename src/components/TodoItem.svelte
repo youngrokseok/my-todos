@@ -1,114 +1,234 @@
 <script lang="ts">
   import { tick } from 'svelte'
-  import type { Todo } from '../types/todo'
+  import type { TodoInput, TodoList, TodoOccurrence } from '../types/todo'
+  import { formatLongDate, getDueStatus, isDateString } from '../utils/date'
+  import { occurrenceMeta } from '../utils/occurrences'
+  import { canSaveRecurrence, dueLabel, emptyTodoInput, isRecurring, todoToInput } from '../utils/recurrence'
+  import ConfirmDialog from './ConfirmDialog.svelte'
+  import TodoOptions from './TodoOptions.svelte'
 
   interface Props {
-    todo: Todo
+    occurrence: TodoOccurrence
+    lists?: TodoList[]
+    editing?: boolean
+    onEditStart?: () => void
     onToggle: () => void
-    onUpdate: (text: string) => boolean
+    onSave: (input: TodoInput) => boolean
     onDelete: () => void
+    onToggleImportant: () => void
+    onToggleUrgent: () => void
   }
 
-  let { todo, onToggle, onUpdate, onDelete }: Props = $props()
+  let {
+    occurrence,
+    lists = [],
+    editing = false,
+    onEditStart,
+    onToggle,
+    onSave,
+    onDelete,
+    onToggleImportant,
+    onToggleUrgent,
+  }: Props = $props()
 
   let isEditing = $state(false)
-  let draftText = $state('')
+  let confirmOpen = $state(false)
+  let draft = $state<TodoInput>(emptyTodoInput())
   let inputEl = $state<HTMLInputElement | null>(null)
 
+  const todo = $derived(occurrence.todo)
+  const completedNow = $derived(occurrence.completed)
+  const dueStatus = $derived(getDueStatus(todo.dueDate, completedNow, occurrence.date))
+  const dueText = $derived(dueLabel(todo.dueDate, completedNow, occurrence.date))
+  const meta = $derived(occurrenceMeta(occurrence))
+  const canSave = $derived(draft.text.trim().length > 0 && isDateString(draft.startDate) && canSaveRecurrence(draft.recurrence))
+  const fieldId = $derived(`todo-${todo.id}-${occurrence.date}`)
+
   async function startEditing() {
-    draftText = todo.text
+    if (completedNow) return
+    onEditStart?.()
+    draft = todoToInput(todo)
     isEditing = true
     await tick()
     inputEl?.focus()
     inputEl?.select()
   }
 
+  $effect(() => {
+    if (!editing && isEditing) {
+      isEditing = false
+      draft = todoToInput(todo)
+    }
+  })
+
   function cancelEditing() {
     isEditing = false
-    draftText = todo.text
+    draft = todoToInput(todo)
   }
 
-  function handleSubmit(event: Event) {
+  function save(event: Event) {
     event.preventDefault()
-    if (onUpdate(draftText)) {
-      isEditing = false
-    }
-  }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      cancelEditing()
-    }
+    if (!canSave) return
+    if (onSave(draft)) isEditing = false
   }
 </script>
 
-<li class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+<li
+  class="rounded-xl border px-3 py-2 {completedNow
+    ? 'border-slate-200 bg-white'
+    : todo.urgent || dueStatus === 'overdue'
+      ? 'border-red-200 bg-red-50'
+      : todo.important
+        ? 'border-amber-200 bg-amber-50'
+        : 'border-slate-200 bg-white'}"
+>
   {#if isEditing}
-    <form class="flex min-w-0 flex-1 items-center gap-2" onsubmit={handleSubmit}>
-      <label class="sr-only" for="edit-todo-{todo.id}">Edit todo</label>
+    <form onsubmit={save}>
+      <label class="sr-only" for="edit-{fieldId}">Edit todo</label>
       <input
-        id="edit-todo-{todo.id}"
+        id="edit-{fieldId}"
         bind:this={inputEl}
-        bind:value={draftText}
-        class="min-w-0 flex-1 rounded-lg border border-indigo-300 px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
-        onkeydown={handleKeydown}
+        bind:value={draft.text}
+        class="w-full rounded-xl border border-indigo-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+        onkeydown={(event) => {
+          if (event.key === 'Escape') cancelEditing()
+        }}
       />
-      <button
-        type="submit"
-        class="rounded-lg px-2 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
-      >
-        Save
-      </button>
-      <button
-        type="button"
-        class="rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
-        onclick={cancelEditing}
-      >
-        Cancel
-      </button>
+      <TodoOptions idPrefix="edit-{fieldId}" {lists} bind:input={draft} />
+      <div class="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-200"
+          onclick={cancelEditing}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
+          disabled={!canSave}
+        >
+          Save
+        </button>
+      </div>
     </form>
   {:else}
-    <input
-      id="todo-{todo.id}"
-      type="checkbox"
-      class="h-4 w-4 shrink-0 accent-indigo-600"
-      checked={todo.completed}
-      onchange={onToggle}
-    />
-    <label
-      for="todo-{todo.id}"
-      class="min-w-0 flex-1 cursor-pointer text-sm {todo.completed
-        ? 'text-slate-400 line-through opacity-80'
-        : 'text-slate-800'}"
-    >
-      {todo.text}
-    </label>
-    <div class="flex shrink-0 items-center gap-1">
+    <div class="flex items-center gap-2">
+      <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 {completedNow ? 'opacity-70' : ''}">
+        <input
+          id={fieldId}
+          type="checkbox"
+          class="h-4 w-4 shrink-0 accent-indigo-600"
+          checked={completedNow}
+          aria-label={isRecurring(todo)
+            ? `Mark ${todo.text} complete for ${formatLongDate(occurrence.date)}`
+            : `Mark ${todo.text} complete`}
+          onchange={onToggle}
+        />
+        <span class="min-w-0">
+          <span class="block text-sm {completedNow ? 'text-slate-400 line-through' : 'text-slate-800'}">
+            {todo.text}
+          </span>
+          {#if meta}
+            <span class="mt-0.5 block text-xs font-normal text-slate-500">{meta}</span>
+          {/if}
+          {#if dueText}
+            <span
+              class="mt-0.5 block text-xs font-medium {dueStatus === 'overdue' || dueStatus === 'today' || dueStatus === 'tomorrow'
+                ? 'text-red-700'
+                : 'text-slate-500'}"
+            >
+              {dueText}
+            </span>
+          {/if}
+        </span>
+      </label>
+      <div class="flex shrink-0 items-center">
+        <div class="flex items-center {completedNow ? 'opacity-70' : ''}">
+        <button
+          type="button"
+          class="rounded-lg p-2 hover:bg-white/80 disabled:opacity-40 {todo.important ? 'text-amber-500' : 'text-slate-400 hover:text-amber-600'}"
+          disabled={completedNow}
+          aria-pressed={todo.important}
+          aria-label={todo.important ? `Remove important from ${todo.text}` : `Mark ${todo.text} as important`}
+          title={todo.important ? 'Important' : 'Mark as important'}
+          onclick={onToggleImportant}
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 3.2 14.7 8.7 20.8 9.6 16.4 14 17.4 20.1 12 17.2 6.6 20.1 7.6 14 3.2 9.6 9.3 8.7 12 3.2Z"
+              fill={todo.important ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="sr-only">Important</span>
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg p-2 hover:bg-white/80 disabled:opacity-40 {todo.urgent ? 'text-red-600' : 'text-slate-400 hover:text-red-600'}"
+          disabled={completedNow}
+          aria-pressed={todo.urgent}
+          aria-label={todo.urgent ? `Remove urgent from ${todo.text}` : `Mark ${todo.text} as urgent`}
+          title={todo.urgent ? 'Urgent' : 'Mark as urgent'}
+          onclick={onToggleUrgent}
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <path d="M12 8v5" />
+            <path d="M12 16.5h.01" />
+          </svg>
+          <span class="sr-only">Urgent</span>
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 disabled:opacity-40 lg:px-2.5 lg:py-1"
+          disabled={completedNow}
+          aria-label="Edit {todo.text}"
+          title="Edit"
+          onclick={startEditing}
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+          </svg>
+          <span class="hidden lg:inline">Edit</span>
+        </button>
+        </div>
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 md:px-2.5 md:py-1"
-        aria-label="Edit {todo.text}"
-        onclick={startEditing}
-      >
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-        </svg>
-        <span class="hidden md:inline">Edit</span>
-      </button>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-red-600 hover:bg-red-50 md:px-2.5 md:py-1"
+        class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-red-600 hover:bg-red-100/70 lg:px-2.5 lg:py-1"
         aria-label="Delete {todo.text}"
-        onclick={onDelete}
+        title="Delete"
+        onclick={() => {
+          confirmOpen = true
+        }}
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M3 6h18" />
           <path d="M8 6V4h8v2" />
           <path d="M19 6l-1 14H6L5 6" />
         </svg>
-        <span class="hidden md:inline">Delete</span>
+        <span class="hidden lg:inline">Delete</span>
       </button>
+      </div>
     </div>
   {/if}
 </li>
+
+<ConfirmDialog
+  open={confirmOpen}
+  title="Delete todo?"
+  message={isRecurring(todo)
+    ? `“${todo.text}” and every scheduled day will be removed. This cannot be undone.`
+    : `“${todo.text}” will be removed. This cannot be undone.`}
+  confirmLabel="Delete todo"
+  onCancel={() => {
+    confirmOpen = false
+  }}
+  onConfirm={() => {
+    confirmOpen = false
+    onDelete()
+  }}
+/>

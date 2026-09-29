@@ -1,5 +1,9 @@
+import { normalizeState } from '../services/normalize'
 import { loadJson, saveJson } from '../services/storage'
-import type { AppState, Todo, TodoList } from '../types/todo'
+import type { AppState, DaySection, Todo, TodoInput, TodoList, TodoRecurrence } from '../types/todo'
+import { getLocalDateString, getSevenDayRange, isDateString } from '../utils/date'
+import { getTodoOccurrencesForDate } from '../utils/occurrences'
+import { isRecurring, readSchedule, toggleTodoCompletionForDate } from '../utils/recurrence'
 
 const STATE_KEY = 'app-state'
 
@@ -7,103 +11,61 @@ function createId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function normalize(text: string): string | null {
+function normalizeText(text: string): string | null {
   const value = text.trim()
   return value.length > 0 ? value : null
 }
 
-function isTodo(value: unknown): value is Todo {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const todo = value as Todo
-  return (
-    typeof todo.id === 'string' &&
-    typeof todo.text === 'string' &&
-    typeof todo.completed === 'boolean' &&
-    typeof todo.createdAt === 'string'
-  )
-}
-
-function isTodoList(value: unknown): value is TodoList {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const list = value as TodoList
-  return (
-    typeof list.id === 'string' &&
-    typeof list.name === 'string' &&
-    Array.isArray(list.todos) &&
-    list.todos.every(isTodo)
-  )
-}
-
-function loadInitialState(): AppState {
-  const saved = loadJson<AppState>(STATE_KEY)
-  const lists = saved?.lists?.filter(isTodoList) ?? []
-  const selectedListId =
-    saved?.selectedListId && lists.some((list) => list.id === saved.selectedListId)
-      ? saved.selectedListId
-      : (lists[0]?.id ?? null)
-
-  return { lists, selectedListId }
-}
-
 function createTodoStore() {
-  const initial = loadInitialState()
+  const initial = normalizeState(loadJson<unknown>(STATE_KEY))
   let lists = $state<TodoList[]>(initial.lists)
+  let todos = $state<Todo[]>(initial.todos)
   let selectedListId = $state<string | null>(initial.selectedListId)
+  /** Session-only. A reload always starts on today. */
+  let pickedDate = $state(getLocalDateString())
 
-  const selectedList = $derived(
-    lists.find((list) => list.id === selectedListId) ?? null,
-  )
+  const selectedList = $derived(lists.find((list) => list.id === selectedListId) ?? null)
+
+  const selectedDate = $derived.by(() => {
+    const today = getLocalDateString()
+    return getSevenDayRange(today).includes(pickedDate) ? pickedDate : today
+  })
+
+  const visibleTodos = $derived(selectedListId ? todos.filter((todo) => todo.listId === selectedListId) : todos)
+
+  const days = $derived.by((): DaySection[] => {
+    const today = getLocalDateString()
+    const names = new Map(lists.map((list) => [list.id, list.name]))
+    return getSevenDayRange(today).map((date) => ({
+      date,
+      isToday: date === today,
+      occurrences: getTodoOccurrencesForDate(visibleTodos, date, names, today),
+    }))
+  })
+
+  function countForList(listId: string): number {
+    return todos.filter((todo) => todo.listId === listId).length
+  }
 
   function persist() {
-    saveJson<AppState>(STATE_KEY, {
-      lists,
-      selectedListId,
-    })
+    saveJson<AppState>(STATE_KEY, { lists, todos, selectedListId })
   }
 
   function findList(listId: string): TodoList | undefined {
     return lists.find((list) => list.id === listId)
   }
 
-  function createList(name: string): string | null {
-    const normalized = normalize(name)
-    if (!normalized) {
-      return null
-    }
-
-    const list: TodoList = {
-      id: createId(),
-      name: normalized,
-      todos: [],
-    }
-
-    lists.push(list)
-    selectedListId = list.id
-    persist()
-    return list.id
+  function findTodo(todoId: string): Todo | undefined {
+    return todos.find((todo) => todo.id === todoId)
   }
 
   function renameList(id: string, name: string): boolean {
-    const normalized = normalize(name)
-    if (!normalized) {
-      return false
-    }
-
+    const normalized = normalizeText(name)
     const list = findList(id)
-    if (!list) {
-      return false
-    }
-
+    if (!normalized || !list) return false
     list.name = normalized
     persist()
     return true
@@ -111,95 +73,139 @@ function createTodoStore() {
 
   function deleteList(id: string): void {
     const index = lists.findIndex((list) => list.id === id)
-    if (index === -1) {
-      return
-    }
-
+    if (index === -1) return
     lists.splice(index, 1)
-
-    if (selectedListId === id) {
-      selectedListId = lists[0]?.id ?? null
+    for (const todo of todos) {
+      if (todo.listId === id) todo.listId = undefined
     }
-
+    if (selectedListId === id) selectedListId = null
     persist()
   }
 
   function selectList(id: string): void {
-    if (!findList(id)) {
-      return
-    }
-
+    if (!findList(id)) return
     selectedListId = id
     persist()
   }
 
-  function addTodo(listId: string, text: string): string | null {
-    const normalized = normalize(text)
-    if (!normalized) {
-      return null
-    }
+  function selectWeek(): void {
+    selectedListId = null
+    persist()
+  }
 
-    const list = findList(listId)
-    if (!list) {
-      return null
-    }
+  function selectDate(date: string): void {
+    if (!isDateString(date)) return
+    const today = getLocalDateString()
+    pickedDate = getSevenDayRange(today).includes(date) ? date : today
+  }
+
+  function toggleListImportant(id: string): void {
+    const list = findList(id)
+    if (!list) return
+    list.important = !list.important
+    persist()
+  }
+
+  function addTodo(input: TodoInput): string | null {
+    const text = normalizeText(input.text)
+    const schedule = readSchedule(input)
+    if (!text || !schedule) return null
+    if (schedule.listId && !findList(schedule.listId)) schedule.listId = undefined
 
     const todo: Todo = {
       id: createId(),
-      text: normalized,
+      text,
+      startDate: schedule.startDate,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      dueDate: schedule.dueDate,
+      recurrence: schedule.recurrence,
+      important: input.important,
+      urgent: input.urgent,
       completed: false,
+      completedDates: [],
       createdAt: new Date().toISOString(),
+      listId: schedule.listId,
     }
-
-    list.todos.push(todo)
+    todos.push(todo)
     persist()
     return todo.id
   }
 
-  function updateTodo(listId: string, todoId: string, text: string): boolean {
-    const normalized = normalize(text)
-    if (!normalized) {
-      return false
-    }
+  function updateTodo(todoId: string, input: TodoInput): boolean {
+    const text = normalizeText(input.text)
+    const schedule = readSchedule(input)
+    const todo = findTodo(todoId)
+    if (!text || !schedule || !todo) return false
+    if (schedule.listId && !findList(schedule.listId)) schedule.listId = undefined
 
-    const todo = findList(listId)?.todos.find((item) => item.id === todoId)
-    if (!todo) {
-      return false
-    }
-
-    todo.text = normalized
+    applyRecurrenceTransition(todo, schedule.recurrence)
+    todo.text = text
+    todo.startDate = schedule.startDate
+    todo.startTime = schedule.startTime
+    todo.endTime = schedule.endTime
+    todo.dueDate = schedule.dueDate
+    todo.recurrence = schedule.recurrence
+    todo.important = input.important
+    todo.urgent = input.urgent
+    todo.listId = schedule.listId
     persist()
     return true
   }
 
-  function toggleTodo(listId: string, todoId: string): void {
-    const todo = findList(listId)?.todos.find((item) => item.id === todoId)
-    if (!todo) {
-      return
+  function applyRecurrenceTransition(todo: Todo, nextRecurrence: TodoRecurrence): void {
+    const wasRecurring = isRecurring(todo)
+    const willRecur = nextRecurrence.type !== 'none'
+    const today = getLocalDateString()
+
+    if (!wasRecurring && willRecur && todo.completed) {
+      const dates = new Set(todo.completedDates)
+      dates.add(today)
+      todo.completedDates = [...dates].sort()
+      todo.completed = false
     }
 
-    todo.completed = !todo.completed
+    if (wasRecurring && !willRecur) {
+      todo.completed = todo.completedDates.includes(today)
+    }
+  }
+
+  function toggleTodoForDate(todoId: string, date: string): void {
+    const todo = findTodo(todoId)
+    if (!todo || !isDateString(date)) return
+    toggleTodoCompletionForDate(todo, date)
     persist()
   }
 
-  function deleteTodo(listId: string, todoId: string): void {
-    const list = findList(listId)
-    if (!list) {
-      return
-    }
-
-    const index = list.todos.findIndex((todo) => todo.id === todoId)
-    if (index === -1) {
-      return
-    }
-
-    list.todos.splice(index, 1)
+  function toggleTodoImportant(todoId: string): void {
+    const todo = findTodo(todoId)
+    if (!todo) return
+    todo.important = !todo.important
     persist()
   }
+
+  function toggleTodoUrgent(todoId: string): void {
+    const todo = findTodo(todoId)
+    if (!todo) return
+    todo.urgent = !todo.urgent
+    persist()
+  }
+
+  function deleteTodo(todoId: string): void {
+    const index = todos.findIndex((todo) => todo.id === todoId)
+    if (index === -1) return
+    todos.splice(index, 1)
+    persist()
+  }
+
+  persist()
 
   return {
     get lists() {
       return lists
+    },
+    get todos() {
+      return todos
     },
     get selectedListId() {
       return selectedListId
@@ -207,13 +213,24 @@ function createTodoStore() {
     get selectedList() {
       return selectedList
     },
-    createList,
+    get selectedDate() {
+      return selectedDate
+    },
+    get days() {
+      return days
+    },
+    countForList,
     renameList,
     deleteList,
     selectList,
+    selectWeek,
+    selectDate,
+    toggleListImportant,
     addTodo,
     updateTodo,
-    toggleTodo,
+    toggleTodoForDate,
+    toggleTodoImportant,
+    toggleTodoUrgent,
     deleteTodo,
   }
 }
