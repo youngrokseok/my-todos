@@ -11,7 +11,7 @@
   ]
 </script>
 
-<div class="mt-3 inline-flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label={copy.language}>
+<div class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5" role="group" aria-label={copy.language}>
   {#each options as option (option.locale)}
     <button
       type="button"

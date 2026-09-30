@@ -2,7 +2,6 @@
   import { messages } from '../i18n/locale.svelte'
   import { todoStore } from '../stores/todoStore.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
-  import LanguageSwitcher from './LanguageSwitcher.svelte'
   import TodoListItem from './TodoListItem.svelte'
   import PlannerCalendar from './PlannerCalendar.svelte'
   import WeekNavigation from './WeekNavigation.svelte'
@@ -44,10 +43,9 @@
 
 <div class="flex h-full flex-col">
   <header class="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-5">
-    <div>
+    <div class="min-w-0">
       <h1 class="text-lg font-semibold uppercase tracking-wider text-indigo-600">{copy.appName}</h1>
       <p class="mt-1 text-sm font-medium text-slate-500">{copy.plannerSubtitle}</p>
-      <LanguageSwitcher />
     </div>
     {#if onClose}
       <button

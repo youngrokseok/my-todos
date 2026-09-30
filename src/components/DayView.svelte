@@ -2,6 +2,7 @@
   import { messages } from '../i18n/locale.svelte'
   import { todoStore } from '../stores/todoStore.svelte'
   import { addDays, formatLongDate, getLocalDateString } from '../utils/date'
+  import LanguageSwitcher from './LanguageSwitcher.svelte'
   import TodoForm from './TodoForm.svelte'
   import TodoItem from './TodoItem.svelte'
 
@@ -60,12 +61,13 @@
         </svg>
       </button>
     {/if}
-    <div class="min-w-0">
+    <div class="min-w-0 flex-1">
       <h2 id="day-heading" class="truncate text-2xl font-semibold text-slate-900">{heading}</h2>
       {#if subtitle}
         <p class="text-sm font-medium text-slate-500">{subtitle}</p>
       {/if}
     </div>
+    <LanguageSwitcher />
   </header>
 
   <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6">
