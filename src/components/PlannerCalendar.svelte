@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { formatLongDate, getLocalDateString, parseLocalDate } from '../utils/date'
+  import { messages } from '../i18n/locale.svelte'
+  import { WEEKDAYS } from '../utils/recurrence'
+  import { formatLongDate, formatMonth, getLocalDateString, parseLocalDate } from '../utils/date'
 
   interface Props {
     dates: string[]
@@ -9,16 +11,15 @@
 
   let { dates, selectedDate, onSelectDate }: Props = $props()
 
-  const weekdayHeads = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const copy = $derived(messages())
+  const weekdayHeads = $derived(WEEKDAYS.map((day) => copy.weekdayShort[day]))
   const today = getLocalDateString()
 
   let viewYear = $state(new Date().getFullYear())
   let viewMonth = $state(new Date().getMonth())
 
   const plannerDays = $derived(new Set(dates))
-  const monthLabel = $derived(
-    new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-  )
+  const monthLabel = $derived(formatMonth(viewYear, viewMonth, copy.dateLocale))
   const cells = $derived.by(() => {
     const first = new Date(viewYear, viewMonth, 1)
     const offset = (first.getDay() + 6) % 7
@@ -50,12 +51,12 @@
   }
 </script>
 
-<nav class="mt-4 border-t border-slate-200 px-1 pt-4" aria-label="Calendar">
+<nav class="mt-4 border-t border-slate-200 px-1 pt-4" aria-label={copy.calendar}>
   <div class="mb-2 flex items-center justify-between gap-2">
     <button
       type="button"
       class="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-      aria-label="Previous month"
+      aria-label={copy.previousMonth}
       onclick={() => shiftMonth(-1)}
     >
       ‹
@@ -64,7 +65,7 @@
     <button
       type="button"
       class="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-      aria-label="Next month"
+      aria-label={copy.nextMonth}
       onclick={() => shiftMonth(1)}
     >
       ›
@@ -88,7 +89,7 @@
               ? 'ring-1 ring-inset ring-indigo-400'
               : ''}"
             aria-current={selected ? 'date' : undefined}
-            aria-label={formatLongDate(cell.value)}
+            aria-label={formatLongDate(cell.value, copy.dateLocale)}
             onclick={() => onSelectDate(cell.value)}
           >
             {cell.day}

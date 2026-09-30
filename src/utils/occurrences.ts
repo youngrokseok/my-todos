@@ -1,3 +1,5 @@
+import { en } from '../i18n/en'
+import type { Messages } from '../i18n/types'
 import type { Todo, TodoOccurrence } from '../types/todo'
 import { formatDueDate } from './date'
 import { formatRecurrence, isTodoCompletedForDate, isTodoScheduledForDate } from './recurrence'
@@ -58,17 +60,17 @@ export function getTodoOccurrencesForDate(
   return occurrences
 }
 
-export function occurrenceMeta(occurrence: TodoOccurrence): string | null {
+export function occurrenceMeta(occurrence: TodoOccurrence, copy: Messages = en): string | null {
   const parts: string[] = []
   if (occurrence.listName) parts.push(occurrence.listName)
   const { startTime, endTime } = occurrence.todo
   if (startTime && endTime) parts.push(`${startTime}–${endTime}`)
   else if (startTime) parts.push(startTime)
-  else if (endTime) parts.push(`Ends ${endTime}`)
-  const recurrence = formatRecurrence(occurrence.todo.recurrence)
+  else if (endTime) parts.push(copy.endsAt(endTime))
+  const recurrence = formatRecurrence(occurrence.todo.recurrence, copy)
   if (recurrence) parts.push(recurrence)
   if (occurrence.carriedOver && !occurrence.todo.dueDate) {
-    parts.push(`Started ${formatDueDate(occurrence.todo.startDate)}`)
+    parts.push(copy.startedOn(formatDueDate(occurrence.todo.startDate, copy.dateLocale)))
   }
   return parts.length > 0 ? parts.join(' · ') : null
 }

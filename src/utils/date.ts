@@ -47,33 +47,43 @@ export function normalizeTime(value: string | null | undefined): string | undefi
   return match[1]
 }
 
-export function formatDueDate(value: string): string {
+export function formatDueDate(value: string, locale = 'en-GB'): string {
   const date = parseLocalDate(value)
   if (!date) return value
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
 /** Compact label for the day nav, such as "Tue, 29 Sept". */
-export function formatShortWeekdayDate(value: string): string {
+export function formatShortWeekdayDate(value: string, locale = 'en-GB'): string {
   const date = parseLocalDate(value)
   if (!date) return value
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-export function formatLongDate(value: string): string {
+export function formatLongDate(value: string, locale = 'en-GB'): string {
   const date = parseLocalDate(value)
   if (!date) return value
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   })
 }
 
-export function formatWeekday(value: string): string {
+export function formatWeekday(value: string, locale = 'en-GB'): string {
   const date = parseLocalDate(value)
   if (!date) return value
-  return date.toLocaleDateString(undefined, { weekday: 'long' })
+  return date.toLocaleDateString(locale, { weekday: 'long' })
+}
+
+export function formatMonth(year: number, monthIndex: number, locale = 'en-GB'): string {
+  return new Date(year, monthIndex, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+}
+
+export function formatDayMonthYear(value: string, locale = 'en-GB'): string {
+  const date = parseLocalDate(value)
+  if (!date) return value
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export type DueStatus = 'none' | 'future' | 'tomorrow' | 'today' | 'overdue'

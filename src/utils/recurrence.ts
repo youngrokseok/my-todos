@@ -1,3 +1,5 @@
+import { en } from '../i18n/en'
+import type { Messages } from '../i18n/types'
 import { formatDueDate, getLocalDateString, getDueStatus, isDateString, normalizeTime, parseLocalDate } from './date'
 import type { Todo, TodoInput, TodoRecurrence, Weekday } from '../types/todo'
 
@@ -10,26 +12,6 @@ export const WEEKDAYS: Weekday[] = [
   'saturday',
   'sunday',
 ]
-
-export const WEEKDAY_SHORT: Record<Weekday, string> = {
-  monday: 'Mon',
-  tuesday: 'Tue',
-  wednesday: 'Wed',
-  thursday: 'Thu',
-  friday: 'Fri',
-  saturday: 'Sat',
-  sunday: 'Sun',
-}
-
-export const WEEKDAY_LONG: Record<Weekday, string> = {
-  monday: 'Monday',
-  tuesday: 'Tuesday',
-  wednesday: 'Wednesday',
-  thursday: 'Thursday',
-  friday: 'Friday',
-  saturday: 'Saturday',
-  sunday: 'Sunday',
-}
 
 const WEEKDAY_FROM_INDEX: Weekday[] = [
   'sunday',
@@ -162,27 +144,29 @@ export function canSaveRecurrence(recurrence: TodoRecurrence): boolean {
   return true
 }
 
-export function formatRecurrence(recurrence: TodoRecurrence): string | null {
+export function formatRecurrence(recurrence: TodoRecurrence, copy: Messages = en): string | null {
   if (recurrence.type === 'none') return null
-  if (recurrence.type === 'daily') return 'Daily'
+  if (recurrence.type === 'daily') return copy.daily
   const days = sortWeekdays(recurrence.days ?? [])
   if (days.length === 0) return null
-  if (isWeekend(days)) return 'Weekend'
-  if (days.length === 1) return 'Weekly'
-  return days.map((day) => WEEKDAY_SHORT[day]).join(' · ')
+  if (isWeekend(days)) return copy.weekend
+  if (days.length === 1) return copy.weekly
+  return days.map((day) => copy.weekdayShort[day]).join(' · ')
 }
 
 export function dueLabel(
   dueDate: string | undefined,
   completed: boolean,
   referenceDate: string = getLocalDateString(),
+  copy: Messages = en,
 ): string | null {
   if (!dueDate) return null
+  const formatted = formatDueDate(dueDate, copy.dateLocale)
   const status = getDueStatus(dueDate, completed, referenceDate)
-  if (status === 'today') return 'Due today'
-  if (status === 'overdue') return `Overdue ${formatDueDate(dueDate)}`
-  if (status === 'tomorrow') return 'Due tomorrow'
-  return `Due ${formatDueDate(dueDate)}`
+  if (status === 'today') return copy.dueToday
+  if (status === 'overdue') return copy.overdueOn(formatted)
+  if (status === 'tomorrow') return copy.dueTomorrow
+  return copy.dueOn(formatted)
 }
 
 export function readSchedule(input: Pick<TodoInput, 'startDate' | 'startTime' | 'endTime' | 'dueDate' | 'listId' | 'recurrence'>): {

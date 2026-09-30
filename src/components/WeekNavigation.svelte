@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { messages } from '../i18n/locale.svelte'
   import { formatDueDate, formatShortWeekdayDate, formatWeekday } from '../utils/date'
 
   interface DayNavItem {
@@ -14,9 +15,11 @@
   }
 
   let { days, selectedDate, onSelectDate }: Props = $props()
+
+  const copy = $derived(messages())
 </script>
 
-<nav aria-label="Days">
+<nav aria-label={copy.days}>
   <ul class="space-y-1">
     {#each days as day (day.date)}
       {@const selected = day.date === selectedDate}
@@ -33,10 +36,10 @@
             <span
               class="block text-xs font-bold uppercase tracking-wider {selected ? 'text-indigo-100' : 'text-slate-400'}"
             >
-              {day.isToday ? 'Today' : formatWeekday(day.date)}
+              {day.isToday ? copy.today : formatWeekday(day.date, copy.dateLocale)}
             </span>
             <span class="block truncate font-medium">
-              {day.isToday ? formatShortWeekdayDate(day.date) : formatDueDate(day.date)}
+              {day.isToday ? formatShortWeekdayDate(day.date, copy.dateLocale) : formatDueDate(day.date, copy.dateLocale)}
             </span>
           </span>
           {#if day.count > 0}

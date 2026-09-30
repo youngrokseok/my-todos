@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { messages } from '../i18n/locale.svelte'
   import { todoStore } from '../stores/todoStore.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
+  import LanguageSwitcher from './LanguageSwitcher.svelte'
   import TodoListItem from './TodoListItem.svelte'
   import PlannerCalendar from './PlannerCalendar.svelte'
   import WeekNavigation from './WeekNavigation.svelte'
@@ -13,6 +15,7 @@
 
   let { onSelectList, onSelectDate, onClose }: Props = $props()
 
+  const copy = $derived(messages())
   let pendingDeleteId = $state<string | null>(null)
 
   const pendingDeleteList = $derived(todoStore.lists.find((list) => list.id === pendingDeleteId) ?? null)
@@ -42,15 +45,16 @@
 <div class="flex h-full flex-col">
   <header class="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-5">
     <div>
-      <h1 class="text-lg font-semibold uppercase tracking-wider text-indigo-600">My Todos</h1>
-      <p class="mt-1 text-sm font-medium text-slate-500">7-day planner</p>
+      <h1 class="text-lg font-semibold uppercase tracking-wider text-indigo-600">{copy.appName}</h1>
+      <p class="mt-1 text-sm font-medium text-slate-500">{copy.plannerSubtitle}</p>
+      <LanguageSwitcher />
     </div>
     {#if onClose}
       <button
         type="button"
         class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-        aria-label="Close planner"
-        title="Close"
+        aria-label={copy.closePlanner}
+        title={copy.closePlanner}
         onclick={onClose}
       >
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -66,7 +70,7 @@
 
     {#if todoStore.lists.length > 0}
       <h2 class="mt-6 border-t border-slate-200 px-2 pb-2 pt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
-        Categories
+        {copy.categories}
       </h2>
       <ul class="space-y-1">
         {#each todoStore.lists as list (list.id)}
@@ -89,11 +93,9 @@
 
 <ConfirmDialog
   open={pendingDeleteList !== null}
-  title="Remove category?"
-  message={pendingDeleteList
-    ? `“${pendingDeleteList.name}” will be removed. Its todos stay in the planner, without a category.`
-    : ''}
-  confirmLabel="Remove category"
+  title={copy.removeCategoryTitle}
+  message={pendingDeleteList ? copy.removeCategoryMessage(pendingDeleteList.name) : ''}
+  confirmLabel={copy.removeCategory}
   onCancel={() => {
     pendingDeleteId = null
   }}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { messages } from '../i18n/locale.svelte'
   import type { TodoInput, TodoList } from '../types/todo'
   import { canSaveRecurrence, emptyTodoInput } from '../utils/recurrence'
   import { isDateString } from '../utils/date'
@@ -17,6 +18,8 @@
   }
 
   let { lists = [], defaultStartDate, defaultListId, openRequest = 0, closeRequest = 0, onExpand, onAdd, onReset }: Props = $props()
+
+  const copy = $derived(messages())
 
   let input = $state<TodoInput>(emptyTodoInput())
   let expanded = $state(false)
@@ -121,13 +124,13 @@
 </script>
 
 <form class="rounded-2xl border border-slate-200 bg-slate-50 p-3" onsubmit={handleSubmit}>
-  <label class="sr-only" for="new-todo">Add a todo</label>
+  <label class="sr-only" for="new-todo">{copy.addTodo}</label>
   <input
     id="new-todo"
     bind:this={inputEl}
     bind:value={input.text}
     class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-    placeholder="What needs to be done?"
+    placeholder={copy.whatNeedsToBeDone}
     autocomplete="off"
     onfocus={expand}
     onclick={expand}
@@ -142,14 +145,14 @@
         class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-200"
         onclick={reset}
       >
-        Cancel
+        {copy.cancel}
       </button>
       <button
         type="submit"
         class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-indigo-300"
         disabled={!canSubmit}
       >
-        Add Todo
+        {copy.addTodo}
       </button>
     </div>
   {/if}

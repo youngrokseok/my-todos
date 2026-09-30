@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { messages } from '../i18n/locale.svelte'
 
   interface Props {
     open: boolean
@@ -14,10 +15,13 @@
     open,
     title,
     message,
-    confirmLabel = 'Delete',
+    confirmLabel,
     onConfirm,
     onCancel,
   }: Props = $props()
+
+  const copy = $derived(messages())
+  const confirmText = $derived(confirmLabel ?? copy.delete)
 
   let confirmButton = $state<HTMLButtonElement | null>(null)
 
@@ -41,7 +45,7 @@
     <button
       type="button"
       class="absolute inset-0 bg-slate-900/40"
-      aria-label="Dismiss dialog"
+      aria-label={copy.dismissDialog}
       onclick={onCancel}
     ></button>
     <div
@@ -65,7 +69,7 @@
           class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           onclick={onCancel}
         >
-          Cancel
+          {copy.cancel}
         </button>
         <button
           type="button"
@@ -73,7 +77,7 @@
           bind:this={confirmButton}
           onclick={onConfirm}
         >
-          {confirmLabel}
+          {confirmText}
         </button>
       </div>
     </div>

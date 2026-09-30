@@ -1,12 +1,11 @@
 <script lang="ts">
+  import { messages } from '../i18n/locale.svelte'
   import type { TodoInput, TodoList, Weekday } from '../types/todo'
   import DateField from './DateField.svelte'
   import TimeField from './TimeField.svelte'
   import { getLocalDateString } from '../utils/date'
   import {
     WEEKDAYS,
-    WEEKDAY_LONG,
-    WEEKDAY_SHORT,
     canSaveRecurrence,
     getWeekday,
     repeatChoiceFromRecurrence,
@@ -22,19 +21,20 @@
 
   let { idPrefix, input = $bindable(), lists = [] }: Props = $props()
 
-  const repeatOptions: { value: RepeatChoice; label: string }[] = [
-    { value: 'none', label: 'Does not repeat' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekend', label: 'Weekend' },
-    { value: 'custom', label: 'Custom days' },
-  ]
+  const copy = $derived(messages())
+  const repeatOptions = $derived<{ value: RepeatChoice; label: string }[]>([
+    { value: 'none', label: copy.doesNotRepeat },
+    { value: 'daily', label: copy.daily },
+    { value: 'weekend', label: copy.weekend },
+    { value: 'custom', label: copy.customDays },
+  ])
 
   let choice = $state<RepeatChoice>(repeatChoiceFromRecurrence(input.recurrence))
   let customDays = $state<Weekday[]>(sortWeekdays(input.recurrence.days ?? []))
   let repeatOpen = $state(false)
   let repeatMenu = $state<HTMLDivElement | null>(null)
 
-  const repeatLabel = $derived(repeatOptions.find((option) => option.value === choice)?.label ?? 'Does not repeat')
+  const repeatLabel = $derived(repeatOptions.find((option) => option.value === choice)?.label ?? copy.doesNotRepeat)
 
   $effect(() => {
     const recurrence = input.recurrence
@@ -75,11 +75,11 @@
 
   const recurrenceHint = $derived(
     choice === 'daily'
-      ? 'Every day'
+      ? copy.everyDay
       : choice === 'weekend'
-        ? 'Saturday and Sunday'
+        ? copy.saturdayAndSunday
         : choice === 'custom' && !canSaveRecurrence(input.recurrence)
-          ? 'Select at least one day'
+          ? copy.selectAtLeastOneDay
           : '',
   )
 
@@ -99,7 +99,7 @@
 <div class="mt-3 grid gap-3 sm:grid-cols-2">
   <TimeField
     id="{idPrefix}-start-time"
-    label="Start time"
+    label={copy.startTime}
     value={input.startTime}
     onChange={(value) => {
       input.startTime = value
@@ -107,7 +107,7 @@
   />
   <TimeField
     id="{idPrefix}-end-time"
-    label="End time"
+    label={copy.endTime}
     value={input.endTime}
     onChange={(value) => {
       input.endTime = value
@@ -118,18 +118,18 @@
 <div class="mt-3 grid gap-3 sm:grid-cols-2">
   <DateField
     id="{idPrefix}-due"
-    label="Due"
+    label={copy.due}
     value={input.dueDate ?? ''}
     clearable
-    placeholder="No due date"
+    placeholder={copy.noDueDate}
     onChange={(value) => {
       input.dueDate = value
     }}
   />
 
   <div class="min-w-0">
-    <label for="{idPrefix}-repeat-button" class="text-xs font-medium text-slate-600 md:hidden">Repeat</label>
-    <label for="{idPrefix}-repeat" class="hidden text-xs font-medium text-slate-600 md:inline">Repeat</label>
+    <label for="{idPrefix}-repeat-button" class="text-xs font-medium text-slate-600 md:hidden">{copy.repeat}</label>
+    <label for="{idPrefix}-repeat" class="hidden text-xs font-medium text-slate-600 md:inline">{copy.repeat}</label>
     <div class="relative mt-1 md:hidden" bind:this={repeatMenu}>
       <button
         id="{idPrefix}-repeat-button"
@@ -153,7 +153,7 @@
           id="{idPrefix}-repeat-list"
           class="mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           role="listbox"
-          aria-label="Repeat"
+          aria-label={copy.repeat}
         >
           {#each repeatOptions as option (option.value)}
             <li>
@@ -188,7 +188,7 @@
       {/each}
     </select>
     {#if choice === 'custom'}
-      <div class="mt-2 flex flex-wrap gap-1" role="group" aria-label="Repeat days">
+      <div class="mt-2 flex flex-wrap gap-1" role="group" aria-label={copy.repeatDays}>
         {#each WEEKDAYS as day (day)}
           <button
             type="button"
@@ -196,10 +196,10 @@
               ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700'
               : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}"
             aria-pressed={customDays.includes(day)}
-            aria-label={WEEKDAY_LONG[day]}
+            aria-label={copy.weekdayLong[day]}
             onclick={() => toggleDay(day)}
           >
-            {WEEKDAY_SHORT[day]}
+            {copy.weekdayShort[day]}
           </button>
         {/each}
       </div>
@@ -212,7 +212,7 @@
 
 {#if lists.length > 0}
   <div class="mt-3">
-    <label for="{idPrefix}-category" class="text-xs font-medium text-slate-600">Category</label>
+    <label for="{idPrefix}-category" class="text-xs font-medium text-slate-600">{copy.category}</label>
     <select
       id="{idPrefix}-category"
       class={fieldClass}
@@ -222,7 +222,7 @@
         input.listId = value || undefined
       }}
     >
-      <option value="">None</option>
+      <option value="">{copy.none}</option>
       {#each lists as list (list.id)}
         <option value={list.id}>{list.name}</option>
       {/each}
@@ -250,7 +250,7 @@
         stroke-linejoin="round"
       />
     </svg>
-    Important
+    {copy.important}
   </button>
   <button
     type="button"
@@ -267,6 +267,6 @@
       <path d="M12 8v5" />
       <path d="M12 16.5h.01" />
     </svg>
-    Urgent
+    {copy.urgent}
   </button>
 </div>

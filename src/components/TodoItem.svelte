@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { messages } from '../i18n/locale.svelte'
   import type { TodoInput, TodoList, TodoOccurrence } from '../types/todo'
   import { formatLongDate, getDueStatus, isDateString } from '../utils/date'
   import { occurrenceMeta } from '../utils/occurrences'
@@ -36,11 +37,12 @@
   let draft = $state<TodoInput>(emptyTodoInput())
   let inputEl = $state<HTMLInputElement | null>(null)
 
+  const copy = $derived(messages())
   const todo = $derived(occurrence.todo)
   const completedNow = $derived(occurrence.completed)
   const dueStatus = $derived(getDueStatus(todo.dueDate, completedNow, occurrence.date))
-  const dueText = $derived(dueLabel(todo.dueDate, completedNow, occurrence.date))
-  const meta = $derived(occurrenceMeta(occurrence))
+  const dueText = $derived(dueLabel(todo.dueDate, completedNow, occurrence.date, copy))
+  const meta = $derived(occurrenceMeta(occurrence, copy))
   const canSave = $derived(draft.text.trim().length > 0 && isDateString(draft.startDate) && canSaveRecurrence(draft.recurrence))
   const fieldId = $derived(`todo-${todo.id}-${occurrence.date}`)
 
@@ -84,7 +86,7 @@
 >
   {#if isEditing}
     <form onsubmit={save}>
-      <label class="sr-only" for="edit-{fieldId}">Edit todo</label>
+      <label class="sr-only" for="edit-{fieldId}">{copy.editTodo}</label>
       <input
         id="edit-{fieldId}"
         bind:this={inputEl}
@@ -101,14 +103,14 @@
           class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-200"
           onclick={cancelEditing}
         >
-          Cancel
+          {copy.cancel}
         </button>
         <button
           type="submit"
           class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
           disabled={!canSave}
         >
-          Save
+          {copy.save}
         </button>
       </div>
     </form>
@@ -121,8 +123,8 @@
           class="h-4 w-4 shrink-0 accent-indigo-600"
           checked={completedNow}
           aria-label={isRecurring(todo)
-            ? `Mark ${todo.text} complete for ${formatLongDate(occurrence.date)}`
-            : `Mark ${todo.text} complete`}
+            ? copy.markCompleteOn(todo.text, formatLongDate(occurrence.date, copy.dateLocale))
+            : copy.markComplete(todo.text)}
           onchange={onToggle}
         />
         <span class="min-w-0">
@@ -150,8 +152,8 @@
           class="rounded-lg p-2 hover:bg-white/80 disabled:opacity-40 {todo.important ? 'text-amber-500' : 'text-slate-400 hover:text-amber-600'}"
           disabled={completedNow}
           aria-pressed={todo.important}
-          aria-label={todo.important ? `Remove important from ${todo.text}` : `Mark ${todo.text} as important`}
-          title={todo.important ? 'Important' : 'Mark as important'}
+          aria-label={todo.important ? copy.removeImportant(todo.text) : copy.markAsImportant(todo.text)}
+          title={todo.important ? copy.important : copy.markImportant}
           onclick={onToggleImportant}
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -163,15 +165,15 @@
               stroke-linejoin="round"
             />
           </svg>
-          <span class="sr-only">Important</span>
+          <span class="sr-only">{copy.important}</span>
         </button>
         <button
           type="button"
           class="inline-flex items-center rounded-lg p-2 hover:bg-white/80 disabled:opacity-40 {todo.urgent ? 'text-red-600' : 'text-slate-400 hover:text-red-600'}"
           disabled={completedNow}
           aria-pressed={todo.urgent}
-          aria-label={todo.urgent ? `Remove urgent from ${todo.text}` : `Mark ${todo.text} as urgent`}
-          title={todo.urgent ? 'Urgent' : 'Mark as urgent'}
+          aria-label={todo.urgent ? copy.removeUrgent(todo.text) : copy.markAsUrgent(todo.text)}
+          title={todo.urgent ? copy.urgent : copy.markUrgent}
           onclick={onToggleUrgent}
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -179,28 +181,28 @@
             <path d="M12 8v5" />
             <path d="M12 16.5h.01" />
           </svg>
-          <span class="sr-only">Urgent</span>
+          <span class="sr-only">{copy.urgent}</span>
         </button>
         <button
           type="button"
           class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 disabled:opacity-40 lg:px-2.5 lg:py-1"
           disabled={completedNow}
-          aria-label="Edit {todo.text}"
-          title="Edit"
+          aria-label={copy.editNamed(todo.text)}
+          title={copy.edit}
           onclick={startEditing}
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
           </svg>
-          <span class="hidden lg:inline">Edit</span>
+          <span class="hidden lg:inline">{copy.edit}</span>
         </button>
         </div>
       <button
         type="button"
         class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm font-medium text-red-600 hover:bg-red-100/70 lg:px-2.5 lg:py-1"
-        aria-label="Delete {todo.text}"
-        title="Delete"
+        aria-label={copy.deleteNamed(todo.text)}
+        title={copy.delete}
         onclick={() => {
           confirmOpen = true
         }}
@@ -210,7 +212,7 @@
           <path d="M8 6V4h8v2" />
           <path d="M19 6l-1 14H6L5 6" />
         </svg>
-        <span class="hidden lg:inline">Delete</span>
+        <span class="hidden lg:inline">{copy.delete}</span>
       </button>
       </div>
     </div>
@@ -219,11 +221,9 @@
 
 <ConfirmDialog
   open={confirmOpen}
-  title="Delete todo?"
-  message={isRecurring(todo)
-    ? `“${todo.text}” and every scheduled day will be removed. This cannot be undone.`
-    : `“${todo.text}” will be removed. This cannot be undone.`}
-  confirmLabel="Delete todo"
+  title={copy.deleteTodoTitle}
+  message={isRecurring(todo) ? copy.deleteRecurringMessage(todo.text) : copy.deleteTodoMessage(todo.text)}
+  confirmLabel={copy.deleteTodo}
   onCancel={() => {
     confirmOpen = false
   }}

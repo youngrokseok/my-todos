@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { messages } from '../i18n/locale.svelte'
   import type { TodoList } from '../types/todo'
 
   interface Props {
@@ -13,6 +14,8 @@
   }
 
   let { list, count, selected, onSelect, onRename, onDelete, onToggleImportant }: Props = $props()
+
+  const copy = $derived(messages())
 
   let isEditing = $state(false)
   let draftName = $state('')
@@ -40,7 +43,7 @@
 <li>
   {#if isEditing}
     <form class="flex items-center gap-1 p-1" onsubmit={saveName}>
-      <label class="sr-only" for="rename-list-{list.id}">Rename category</label>
+      <label class="sr-only" for="rename-list-{list.id}">{copy.renameCategory}</label>
       <input
         id="rename-list-{list.id}"
         bind:this={inputEl}
@@ -51,10 +54,10 @@
         }}
       />
       <button type="submit" class="rounded-lg px-2 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50">
-        Save
+        {copy.save}
       </button>
       <button type="button" class="rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-100" onclick={cancelEditing}>
-        Cancel
+        {copy.cancel}
       </button>
     </form>
   {:else}
@@ -71,8 +74,8 @@
           ? 'text-amber-500'
           : 'text-slate-400 hover:text-amber-600'}"
         aria-pressed={list.important}
-        aria-label={list.important ? `Remove important from ${list.name}` : `Mark ${list.name} as important`}
-        title={list.important ? 'Important' : 'Mark category as important'}
+        aria-label={list.important ? copy.removeImportant(list.name) : copy.markAsImportant(list.name)}
+        title={list.important ? copy.important : copy.markImportant}
         onclick={onToggleImportant}
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -84,7 +87,7 @@
             stroke-linejoin="round"
           />
         </svg>
-        <span class="sr-only">Important</span>
+        <span class="sr-only">{copy.important}</span>
       </button>
       <button
         type="button"
@@ -93,17 +96,14 @@
         aria-pressed={selected}
       >
         <span class="block truncate font-medium">{list.name}</span>
-        <span class="block text-xs text-slate-500">
-          {count}
-          {count === 1 ? 'todo' : 'todos'}
-        </span>
+        <span class="block text-xs text-slate-500">{copy.todoCount(count)}</span>
       </button>
       <div class="flex shrink-0 pr-1">
         <button
           type="button"
           class="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
-          aria-label="Rename {list.name}"
-          title="Rename"
+          aria-label={copy.renameNamed(list.name)}
+          title={copy.rename}
           onclick={startEditing}
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -114,8 +114,8 @@
         <button
           type="button"
           class="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
-          aria-label="Delete {list.name}"
-          title="Delete"
+          aria-label={copy.removeNamed(list.name)}
+          title={copy.remove}
           onclick={onDelete}
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

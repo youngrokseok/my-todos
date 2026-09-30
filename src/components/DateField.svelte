@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { formatLongDate, getLocalDateString, parseLocalDate } from '../utils/date'
+  import { messages } from '../i18n/locale.svelte'
+  import { formatDayMonthYear, formatLongDate, formatMonth, getLocalDateString, parseLocalDate } from '../utils/date'
+  import { WEEKDAYS } from '../utils/recurrence'
 
   interface Props {
     id: string
@@ -10,9 +12,11 @@
     onChange: (value: string | undefined) => void
   }
 
-  let { id, label, value, clearable = false, placeholder = 'Choose a date', onChange }: Props = $props()
+  let { id, label, value, clearable = false, placeholder, onChange }: Props = $props()
 
-  const weekdayHeads = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const copy = $derived(messages())
+  const placeholderText = $derived(placeholder ?? copy.chooseDate)
+  const weekdayHeads = $derived(WEEKDAYS.map((day) => copy.weekdayShort[day]))
 
   let open = $state(false)
   let root = $state<HTMLDivElement | null>(null)
@@ -23,11 +27,9 @@
   const display = $derived.by(() => {
     const date = parseLocalDate(value)
     if (!date) return ''
-    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+    return formatDayMonthYear(value, copy.dateLocale)
   })
-  const monthLabel = $derived(
-    new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-  )
+  const monthLabel = $derived(formatMonth(viewYear, viewMonth, copy.dateLocale))
   const days = $derived.by(() => {
     const first = new Date(viewYear, viewMonth, 1)
     const offset = (first.getDay() + 6) % 7
@@ -94,7 +96,7 @@
         aria-controls="{id}-menu"
         onclick={toggle}
       >
-        <span>{display || placeholder}</span>
+        <span>{display || placeholderText}</span>
         <svg class="h-4 w-4 shrink-0 text-slate-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="M5 8l5 5 5-5" />
         </svg>
@@ -105,7 +107,7 @@
             <button
               type="button"
               class="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-              aria-label="Previous month"
+              aria-label={copy.previousMonth}
               onclick={() => shiftMonth(-1)}
             >
               ‹
@@ -114,7 +116,7 @@
             <button
               type="button"
               class="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-              aria-label="Next month"
+              aria-label={copy.nextMonth}
               onclick={() => shiftMonth(1)}
             >
               ›
@@ -137,7 +139,7 @@
                   ? 'ring-1 ring-indigo-200'
                   : ''}"
                 aria-pressed={day.value === value}
-                aria-label={formatLongDate(day.value)}
+                aria-label={formatLongDate(day.value, copy.dateLocale)}
                 onclick={() => choose(day.value)}
               >
                 {day.day}
@@ -156,7 +158,7 @@
           open = false
         }}
       >
-        Clear
+        {copy.clear}
       </button>
     {/if}
   </div>

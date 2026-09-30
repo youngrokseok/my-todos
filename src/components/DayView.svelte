@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { messages } from '../i18n/locale.svelte'
   import { todoStore } from '../stores/todoStore.svelte'
   import { addDays, formatLongDate, getLocalDateString } from '../utils/date'
   import TodoForm from './TodoForm.svelte'
@@ -10,16 +11,17 @@
 
   let { onOpenLists }: Props = $props()
 
+  const copy = $derived(messages())
   const today = $derived(getLocalDateString())
   const selected = $derived(todoStore.days.find((day) => day.date === todoStore.selectedDate) ?? todoStore.days[0])
-  const heading = $derived(selected ? formatLongDate(selected.date) : '')
+  const heading = $derived(selected ? formatLongDate(selected.date, copy.dateLocale) : '')
   const subtitle = $derived.by(() => {
     if (!selected) return ''
-    if (selected.date === today) return 'Today'
-    if (selected.date === addDays(today, 1)) return 'Tomorrow'
+    if (selected.date === today) return copy.today
+    if (selected.date === addDays(today, 1)) return copy.tomorrow
     return ''
   })
-  const emptyMessage = $derived(selected?.date === today ? 'No tasks planned for today.' : 'No tasks planned for this day.')
+  const emptyMessage = $derived(selected?.date === today ? copy.noTodosToday : copy.noTodosDay)
 
   let editingId = $state<string | null>(null)
   let closeComposer = $state(0)
@@ -49,8 +51,8 @@
       <button
         type="button"
         class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-        aria-label="Open planner"
-        title="Planner"
+        aria-label={copy.openPlanner}
+        title={copy.openPlanner}
         onclick={onOpenLists}
       >
         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -80,7 +82,7 @@
       <p class="mt-4 flex items-center gap-2 text-sm text-slate-500">
         <span>{todoStore.selectedList.name}</span>
         <button type="button" class="font-medium text-indigo-700 hover:underline" onclick={() => todoStore.selectWeek()}>
-          Show all
+          {copy.showAll}
         </button>
       </p>
     {/if}

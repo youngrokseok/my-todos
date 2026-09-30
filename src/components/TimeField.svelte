@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { messages } from '../i18n/locale.svelte'
+
   interface Props {
     id: string
     label: string
@@ -7,6 +9,8 @@
   }
 
   let { id, label, value, onChange }: Props = $props()
+
+  const copy = $derived(messages())
 
   const quarterHours = Array.from({ length: 24 * 4 }, (_, index) => {
     const hour = Math.floor(index / 4)
@@ -57,7 +61,7 @@
       aria-controls="{id}-list"
       onclick={toggle}
     >
-      <span>{value || 'None'}</span>
+      <span>{value || copy.none}</span>
       <svg class="h-4 w-4 shrink-0 text-slate-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
         <path d="M5 8l5 5 5-5" />
       </svg>
@@ -79,7 +83,7 @@
             aria-selected={!value}
             onclick={() => choose('')}
           >
-            None
+            {copy.none}
           </button>
         </li>
         {#each options as option (option)}
@@ -107,7 +111,7 @@
     value={value ?? ''}
     onchange={(event) => onChange(event.currentTarget.value || undefined)}
   >
-    <option value="">None</option>
+    <option value="">{copy.none}</option>
     {#each options as option (option)}
       <option value={option}>{option}</option>
     {/each}
