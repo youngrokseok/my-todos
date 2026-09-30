@@ -42,8 +42,8 @@
 <div class="flex h-full flex-col">
   <header class="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-5">
     <div>
-      <h1 class="text-xs font-semibold uppercase tracking-wider text-indigo-600">My Todos</h1>
-      <p class="mt-1 text-sm text-slate-500">7-day planner</p>
+      <h1 class="text-lg font-semibold uppercase tracking-wider text-indigo-600">My Todos</h1>
+      <p class="mt-1 text-sm font-medium text-slate-500">7-day planner</p>
     </div>
     {#if onClose}
       <button

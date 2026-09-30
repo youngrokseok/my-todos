@@ -12,7 +12,7 @@
     const hour = Math.floor(index / 4)
     const minute = (index % 4) * 15
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-  })
+  }).filter((time) => time < '00:15' || time > '04:45')
 
   let open = $state(false)
   let root = $state<HTMLDivElement | null>(null)

@@ -234,8 +234,8 @@
   <button
     type="button"
     class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium {input.important
-      ? 'border-amber-300 bg-amber-50 text-amber-800'
-      : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100'}"
+      ? 'border-amber-300 bg-amber-50 text-amber-500'
+      : 'border-slate-300 bg-white text-slate-400 hover:bg-slate-100 hover:text-amber-500'}"
     aria-pressed={input.important}
     onclick={() => {
       input.important = !input.important
@@ -255,8 +255,8 @@
   <button
     type="button"
     class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium {input.urgent
-      ? 'border-red-300 bg-red-50 text-red-700'
-      : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100'}"
+      ? 'border-red-300 bg-red-50 text-red-600'
+      : 'border-slate-300 bg-white text-slate-400 hover:bg-slate-100 hover:text-red-600'}"
     aria-pressed={input.urgent}
     onclick={() => {
       input.urgent = !input.urgent

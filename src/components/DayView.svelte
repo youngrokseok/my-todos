@@ -61,7 +61,7 @@
     <div class="min-w-0">
       <h2 id="day-heading" class="truncate text-2xl font-semibold text-slate-900">{heading}</h2>
       {#if subtitle}
-        <p class="text-sm text-slate-500">{subtitle}</p>
+        <p class="text-sm font-medium text-slate-500">{subtitle}</p>
       {/if}
     </div>
   </header>

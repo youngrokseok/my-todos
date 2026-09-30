@@ -72,7 +72,7 @@
   </div>
   <div class="grid grid-cols-7 gap-1">
     {#each weekdayHeads as head (head)}
-      <div class="flex h-7 items-center justify-center text-[11px] font-medium text-slate-400">{head}</div>
+      <div class="flex h-7 items-center justify-center text-[11px] font-semibold text-slate-400">{head}</div>
     {/each}
     {#each cells as cell (cell.value)}
       <div class="min-w-0">

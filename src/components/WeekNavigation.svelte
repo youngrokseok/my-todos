@@ -31,7 +31,7 @@
         >
           <span class="min-w-0">
             <span
-              class="block text-xs font-semibold uppercase tracking-wider {selected ? 'text-indigo-100' : 'text-slate-400'}"
+              class="block text-xs font-bold uppercase tracking-wider {selected ? 'text-indigo-100' : 'text-slate-400'}"
             >
               {day.isToday ? 'Today' : formatWeekday(day.date)}
             </span>
